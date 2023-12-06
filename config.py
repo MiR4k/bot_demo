@@ -36,6 +36,14 @@ def reg(message):
     except Exception as e:
         print(f"Error during bot initialization: {e}")
 
+def edit_name(message):
+    try:
+        cursor.execute('UPDATE user SET full_name = ? WHERE tg_id = ?', (message.text, message.from_user.id))
+        conn.commit()
+        bot.send_message(message.chat.id, 'Успешно!', reply_markup=types.ReplyKeyboardRemove())
+    except Exception as e:
+        print(e)
+
 
 # Функция для получения названия товара
 def get_product_name(message):
@@ -123,18 +131,18 @@ def ask_for_photo(message):
     global photo_data
     try:
         # Проверка, если пользователь нажал "Отмена"
-        if message.text.lower() == 'отмена':
+        if message.text and message.text.lower() == 'отмена':
             bot.send_message(message.chat.id, 'Добавление товара отменено.', reply_markup=types.ReplyKeyboardRemove())
             return
 
         # Проверка ответа на вопрос о фото товара
-        if message.text.lower() == 'да':
+        if message.text and message.text.lower() == 'да':
             # Здесь можно добавить логику для загрузки и обработки фото
             bot.send_message(message.chat.id, 'Пожалуйста, загрузите фото товара.')
 
             # Регистрация следующего шага обработки фото
             bot.register_next_step_handler(message, get_product_photo)
-        elif message.text.lower() == 'нет':
+        elif message.text and message.text.lower() == 'нет':
             # Здесь можно обработать ситуацию, когда фото не требуется
             add_product_to_catalog(message)
         else:
@@ -147,7 +155,7 @@ def get_product_photo(message):
     global photo_data
     try:
         # Проверка, если пользователь нажал "Отмена"
-        if message.text.lower() == 'отмена':
+        if message.text and message.text.lower() == 'отмена':
             bot.send_message(message.chat.id, 'Добавление товара отменено.', reply_markup=types.ReplyKeyboardRemove())
             return
 
@@ -164,7 +172,11 @@ def get_product_photo(message):
         # Добавление товара в каталог
         add_product_to_catalog(message)
     except Exception as e:
-        bot.send_message(message.chat.id, f"Ошибка при добавлении товара: {e}")
+        bot.send
+
+
+
+
 
 # Функция для добавления товара в каталог
 def add_product_to_catalog(message):
@@ -183,7 +195,7 @@ def add_product_to_catalog(message):
 
         bot.send_message(message.chat.id, 'Товар успешно добавлен в каталог.', reply_markup=types.ReplyKeyboardRemove())
     except Exception as e:
-        bot.send_message(message.chat.id, f"Ошибка при добавлении товара: {e}")
+        print( f"Ошибка при добавлении товара: {e}")
 
 
 

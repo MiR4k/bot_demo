@@ -49,6 +49,32 @@ def start_adding_product(message):
         bot.send_message(message.chat.id, f"Ошибка при добавлении товара: {e}")
 
 
+# Функция для отображения добавленных товаров
+@bot.message_handler(commands=['show_catalog'])
+def show_catalog(message):
+    try:
+        # Выполнение SQL-запроса для получения списка товаров из каталога
+        cursor.execute('SELECT product_name, price, description, photo_data FROM products')
+        products = cursor.fetchall()
+
+        # Проверка наличия товаров в каталоге
+        if not products:
+            bot.send_message(message.chat.id, 'Каталог пуст.')
+            return
+
+        # Отправка сообщения с информацией о товарах
+        for product in products:
+            product_name, price, description, photo_data = product
+            message_text = f"**Название:** {product_name}\n**Цена:** {price}\n**Описание:** {description}"
+
+            # Отправка фото товара, если оно есть
+            if photo_data:
+                bot.send_photo(message.chat.id, photo_data, caption=message_text, parse_mode='Markdown')
+            else:
+                bot.send_message(message.chat.id, message_text, parse_mode='Markdown')
+
+    except Exception as e:
+        bot.send_message(message.chat.id, f"Ошибка при отображении каталога: {e}")
 
 
 
