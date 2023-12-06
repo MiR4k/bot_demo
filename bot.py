@@ -1,5 +1,6 @@
 from config import *
 
+
 @bot.message_handler(commands=['start'])
 def start(message):
     global full_name
@@ -49,32 +50,58 @@ def start_adding_product(message):
         bot.send_message(message.chat.id, f"Ошибка при добавлении товара: {e}")
 
 
-# Функция для отображения добавленных товаров
+
+# Функция для обработки команды /show_catalog
 @bot.message_handler(commands=['show_catalog'])
-def show_catalog(message):
+def start_show_catalog(message):
     try:
+        global current_product_index, catalog_products, current_message_id
+        current_product_index = 0
+        current_message_id = None
+
         # Выполнение SQL-запроса для получения списка товаров из каталога
         cursor.execute('SELECT product_name, price, description, photo_data FROM products')
-        products = cursor.fetchall()
+        catalog_products = cursor.fetchall()
 
         # Проверка наличия товаров в каталоге
-        if not products:
+        if not catalog_products:
             bot.send_message(message.chat.id, 'Каталог пуст.')
             return
 
-        # Отправка сообщения с информацией о товарах
-        for product in products:
-            product_name, price, description, photo_data = product
-            message_text = f"**Название:** {product_name}\n**Цена:** {price}\n**Описание:** {description}"
-
-            # Отправка фото товара, если оно есть
-            if photo_data:
-                bot.send_photo(message.chat.id, photo_data, caption=message_text, parse_mode='Markdown')
-            else:
-                bot.send_message(message.chat.id, message_text, parse_mode='Markdown')
+        # Отправка сообщения с информацией о первом товаре
+        send_product_message(message.chat.id, catalog_products[current_product_index])
 
     except Exception as e:
         bot.send_message(message.chat.id, f"Ошибка при отображении каталога: {e}")
+
+
+# Обработчик для инлайн-кнопок
+@bot.callback_query_handler(func=lambda call: True)
+def handle_inline_buttons(call):
+    try:
+        global current_product_index, catalog_products
+
+        # Обработка нажатия на кнопку "Предыдущий"
+        if call.data == 'previous_product':
+            current_product_index = (current_product_index - 1) % len(catalog_products)
+            send_product_message(call.message.chat.id, catalog_products[current_product_index])
+
+        # Обработка нажатия на кнопку "Следующий"
+        elif call.data == 'next_product':
+            current_product_index = (current_product_index + 1) % len(catalog_products)
+            send_product_message(call.message.chat.id, catalog_products[current_product_index])
+
+        # Обработка нажатия на кнопку "Добавить в корзину"
+        elif call.data == 'add_to_cart':
+            # Добавьте здесь логику для добавления товара в корзину
+            bot.send_message(call.message.chat.id, 'Товар добавлен в корзину.')
+
+        # Завершение обработки запроса
+        bot.answer_callback_query(call.id, text="")
+
+    except Exception as e:
+        bot.send_message(call.message.chat.id, f"Ошибка при обработке инлайн-кнопок: {e}")
+
 
 
 

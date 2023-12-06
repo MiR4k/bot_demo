@@ -11,6 +11,10 @@ price = ""
 description = ""
 photo_data = None  # Здесь можно сохранить данные о фото, если необходимо
 
+# Глобальные переменные для отслеживания текущего отображаемого товара
+current_product_index = 0
+catalog_products = []  # Список товаров из каталога
+current_message_id = None  # Идентификатор текущего сообщения с товаром
 
 
 try:
@@ -68,7 +72,7 @@ def get_product_name(message):
         # Регистрация следующего шага обработки текстового сообщения
         bot.register_next_step_handler(message, get_product_price)
     except Exception as e:
-        bot.send_message(message.chat.id, f"Ошибка при добавлении товара: {e}")
+        print(message.chat.id, f"Ошибка при добавлении товара: {e}")
 
 
 # Функция для получения цены товара
@@ -99,7 +103,7 @@ def get_product_price(message):
         # Регистрация следующего шага обработки текстового сообщения
         bot.register_next_step_handler(message, get_product_description)
     except Exception as e:
-        bot.send_message(message.chat.id, f"Ошибка при добавлении товара: {e}")
+        print(message.chat.id, f"Ошибка при добавлении товара: {e}")
 
 # Функция для получения описания товара
 def get_product_description(message):
@@ -124,7 +128,7 @@ def get_product_description(message):
         # Регистрация следующего шага обработки текстового сообщения
         bot.register_next_step_handler(message, ask_for_photo)
     except Exception as e:
-        bot.send_message(message.chat.id, f"Ошибка при добавлении товара: {e}")
+        print(message.chat.id, f"Ошибка при добавлении товара: {e}")
 
 # Функция для обработки ответа на вопрос о фото товара
 def ask_for_photo(message):
@@ -148,7 +152,7 @@ def ask_for_photo(message):
         else:
             bot.send_message(message.chat.id, 'Пожалуйста, ответьте "Да" или "Нет".', reply_markup=types.ReplyKeyboardRemove())
     except Exception as e:
-        bot.send_message(message.chat.id, f"Ошибка при добавлении товара: {e}")
+        print(message.chat.id, f"Ошибка при добавлении товара: {e}")
 
 # Функция для получения фото товара
 def get_product_photo(message):
@@ -172,18 +176,14 @@ def get_product_photo(message):
         # Добавление товара в каталог
         add_product_to_catalog(message)
     except Exception as e:
-        bot.send
-
-
-
-
+        print(e)
 
 # Функция для добавления товара в каталог
 def add_product_to_catalog(message):
     global product_name, price, description, photo_data
     try:
         # Выполнение SQL-запроса для добавления товара в базу данных
-        cursor.execute('INSERT INTO products (product_name, price, description, photo_data) VALUES (?, ?, ?, ?)',
+        cursor.execute('INSERT INTO products (produc_name, price, description, photo_data) VALUES (?, ?, ?, ?)',
                        (product_name, price, description, photo_data))
         conn.commit()
 
@@ -195,7 +195,39 @@ def add_product_to_catalog(message):
 
         bot.send_message(message.chat.id, 'Товар успешно добавлен в каталог.', reply_markup=types.ReplyKeyboardRemove())
     except Exception as e:
-        print( f"Ошибка при добавлении товара: {e}")
+        print(f"Ошибка при добавлении товара: {e} В чате {message.chat.id}")
 
 
+# Функция для отправки сообщения с информацией о товаре
+def send_product_message(chat_id, product):
+    try:
+        global current_message_id
+        product_name, price, description, photo_data = product
+        message_text = f"**Название:** {product_name}\n**Цена:** {price}\n**Описание:** {description}"
+
+        # Создание объекта ReplyKeyboardMarkup для создания кнопок
+        markup = create_inline_keyboard()
+
+        # Если есть текущее сообщение, обновим его, иначе отправим новое
+        if current_message_id:
+            bot.edit_message_media(media=types.InputMediaPhoto(photo_data, caption=message_text, parse_mode='Markdown'),
+                                   chat_id=chat_id, message_id=current_message_id, reply_markup=markup)
+        else:
+            msg = bot.send_photo(chat_id, photo_data, caption=message_text, parse_mode='Markdown', reply_markup=markup)
+            current_message_id = msg.message_id
+
+    except Exception as e:
+        print(chat_id, f"Ошибка при отправке сообщения о товаре: {e}")
+
+# Функция для создания инлайн-клавиатуры
+def create_inline_keyboard():
+    markup = types.InlineKeyboardMarkup(row_width=3)
+    btn_previous = types.InlineKeyboardButton('Предыдущий', callback_data='previous_product')
+    btn_next = types.InlineKeyboardButton('Следующий', callback_data='next_product')
+    btn_add_to_cart = types.InlineKeyboardButton('Добавить в корзину', callback_data='add_to_cart')
+    markup.add(btn_previous, btn_next, btn_add_to_cart)
+    return markup
+
+def send_error_message(chat_id, error_message):
+    print(chat_id, f"Ошибка: {error_message}")
 
