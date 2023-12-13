@@ -3,23 +3,22 @@ from config import *
 
 @bot.message_handler(commands=['start'])
 def start(message):
-    global full_name
-    full_name = f"{message.from_user.first_name} {message.from_user.last_name}" \
-        if message.from_user.last_name \
-        else message.from_user.first_name
-    full_name = full_name.replace('None', '')
-
     markup = ReplyKeyboardMarkup(resize_keyboard=True)
     btn_yes = KeyboardButton('Да')
     bnt_edit = KeyboardButton('Редактировать')
     markup.row(btn_yes, bnt_edit)
     try:
-        cursor.execute('SELECT full_name FROM user WHERE tg_id = ?', (message.from_user.id,))
+        cursor.execute('SELECT full_name FROM Users WHERE tg_id = ?', (message.from_user.id,))
         existing_user = cursor.fetchone()
         if existing_user:
             bot.send_message(message.chat.id, f'Добро пожаловать {existing_user[0]}! Вы уже зарегистрированы.', reply_markup=types.ReplyKeyboardRemove())
+            bot.register_next_step_handler(message, create_keyboard(message))
 
         else:
+            full_name = f"{message.from_user.first_name} {message.from_user.last_name}" \
+                if message.from_user.last_name\
+                else message.from_user.first_name
+            full_name = full_name.replace('None', '')
             bot.send_message(message.chat.id, f'Добро пожаловать {full_name}\nПравильное ли ваше имя для регистрации?', reply_markup=markup)
             bot.register_next_step_handler(message, reg)
 

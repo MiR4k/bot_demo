@@ -27,24 +27,30 @@ except Exception as e:
 
 def reg(message):
     global full_name
+    full_name = f"{message.from_user.first_name} {message.from_user.last_name}" \
+        if message.from_user.last_name \
+        else message.from_user.first_name
+    full_name = full_name.replace('None', '')
     try:
         if message.text == 'Да':
-            cursor.execute('INSERT INTO user (tg_id, full_name, username) VALUES (?, ?, ?)',
+            cursor.execute('INSERT INTO Users (tg_id, Full_name, Username) VALUES (?, ?, ?)',
                            (message.from_user.id, full_name, message.from_user.username))
             conn.commit()
             bot.send_message(message.chat.id, 'Успешно', reply_markup=types.ReplyKeyboardRemove())
 
         elif message.text == 'Редактировать':
             bot.send_message(message.chat.id, 'Введите ваше имя бля')
-            bot.register_next_step_handler(message,edit_name)
+            bot.register_next_step_handler(message, edit_name)
     except Exception as e:
         print(f"Error during bot initialization: {e}")
 
 def edit_name(message):
     try:
-        cursor.execute('UPDATE user SET full_name = ? WHERE tg_id = ?', (message.text, message.from_user.id))
+        cursor.execute('INSERT INTO Users (tg_id, Full_name, Username) VALUES (?, ?, ?)',
+                       (message.from_user.id, message.text, message.from_user.username))
         conn.commit()
         bot.send_message(message.chat.id, 'Успешно!', reply_markup=types.ReplyKeyboardRemove())
+        bot.register_next_step_handler(message, )
     except Exception as e:
         print(e)
 
@@ -218,6 +224,41 @@ def send_product_message(chat_id, product):
 
     except Exception as e:
         print(chat_id, f"Ошибка при отправке сообщения о товаре: {e}")
+
+
+def get_user_type(message):
+    try:
+        cursor.execute('SELECT UserType FROM Users WHERE tg_id = ? ', (message.from_user.id,))
+        user_type = cursor.fetchall()
+        return user_type
+    except Exception as e:
+        print(message.chat.id, f"Ошибка при отправке сообщения о товаре: {e}")
+
+def create_keyboard(message):
+    user_type=get_user_type(message)
+    keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    user_type=user_type[0][0]
+    if user_type == 'User':
+        print('TRUE')
+        keyboard.row('🛒 Заказать', '📋 История заказов')
+        keyboard.row('🔄 Статус текущего заказа')
+
+    elif user_type == 'company_rep':
+        keyboard.row('📊 Статус заказов', '💰 Баланс и предоплата')
+        keyboard.row('📝 Шаблоны заказов', '🔐 Изменить данные профиля')
+
+    elif user_type == 'courier':
+        keyboard.row('🚚 Информация о заказах', '📞 Контакты заказчиков')
+        keyboard.row('💵 Оплата и счет-фактура', '✅ Подтвердить доставку')
+
+    elif user_type == 'admin':
+        keyboard.row('🕵️‍♂️ Мониторинг курьеров', '📈 Статистика и анализ')
+        keyboard.row('🔄 Подтвердить заказы', '🔒 Изменить статус пользователя')
+
+    elif user_type == 'owner':
+        keyboard.row('🔄 Управление пользователями', '📊 Полная статистика')
+        keyboard.row('🔐 Назначение администраторов', '⚙️ Дополнительные настройки')
+    bot.send_message(message.chat.id, 'Menu blyad', reply_markup=keyboard)
 
 # Функция для создания инлайн-клавиатуры
 def create_inline_keyboard():
