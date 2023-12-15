@@ -4,7 +4,7 @@ from telebot.types import ReplyKeyboardMarkup, KeyboardButton
 import sqlite3
 
 TOKEN = '6668392385:AAEv2_ROZSkJFQjaVp29uEhfFPrG6xN_Bp4'
-
+cid = ""
 # Глобальные переменные для хранения информации о товаре
 product_name = ""
 price = ""
@@ -26,7 +26,10 @@ except Exception as e:
     print(f"Error during bot initialization: {e}")
 
 def reg(message):
+    global cid
     global full_name
+    cid = message.chat.id
+
     full_name = f"{message.from_user.first_name} {message.from_user.last_name}" \
         if message.from_user.last_name \
         else message.from_user.first_name
@@ -45,12 +48,16 @@ def reg(message):
         print(f"Error during bot initialization: {e}")
 
 def edit_name(message):
+    markup = ReplyKeyboardMarkup(resize_keyboard=True)
+    btn = KeyboardButton('открыть меню')
+    markup.row(btn)
     try:
         cursor.execute('INSERT INTO Users (tg_id, Full_name, Username) VALUES (?, ?, ?)',
                        (message.from_user.id, message.text, message.from_user.username))
         conn.commit()
-        bot.send_message(message.chat.id, 'Успешно!', reply_markup=types.ReplyKeyboardRemove())
-        bot.register_next_step_handler(message, )
+        bot.send_message(cid, 'Успешно!', reply_markup=types.ReplyKeyboardRemove())
+        bot.send_message(cid, 'Нажмите чтобы открыть меню', reply_markup=markup)
+        bot.register_next_step_handler(message, create_keyboard)
     except Exception as e:
         print(e)
 
@@ -189,7 +196,7 @@ def add_product_to_catalog(message):
     global product_name, price, description, photo_data
     try:
         # Выполнение SQL-запроса для добавления товара в базу данных
-        cursor.execute('INSERT INTO products (produc_name, price, description, photo_data) VALUES (?, ?, ?, ?)',
+        cursor.execute('INSERT INTO Products (ProductName, Price, Description, Photo_data) VALUES (?, ?, ?, ?)',
                        (product_name, price, description, photo_data))
         conn.commit()
 
@@ -225,23 +232,31 @@ def send_product_message(chat_id, product):
     except Exception as e:
         print(chat_id, f"Ошибка при отправке сообщения о товаре: {e}")
 
-
-def get_user_type(message):
-    try:
-        cursor.execute('SELECT UserType FROM Users WHERE tg_id = ? ', (message.from_user.id,))
-        user_type = cursor.fetchall()
-        return user_type
-    except Exception as e:
-        print(message.chat.id, f"Ошибка при отправке сообщения о товаре: {e}")
+# Не нужный код
+# def get_user_type(message):
+#     try:
+#         cursor.execute('SELECT UserType FROM Users WHERE tg_id = ? ', message.from_user.id)
+#         user_type = cursor.fetchone()
+#         return user_type[0]
+#     except Exception as e:
+#         print(message.chat.id, f"Ошибка при отправке сообщения о товаре: {e}")
 
 def create_keyboard(message):
-    user_type=get_user_type(message)
+    global user_type
+    global cid
+    cid = message.chat.id
+    try:
+        cursor.execute('SELECT UserType FROM Users WHERE tg_id = ? ', (cid,))
+        user_type = cursor.fetchone()
+    except Exception as e:
+        print(message.chat.id, f"Ошибка при отправке сообщения о товаре: {e}")
     keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    user_type=user_type[0][0]
+    user_type = user_type[0]
     if user_type == 'User':
-        print('TRUE')
+        # print(user_type)
         keyboard.row('🛒 Заказать', '📋 История заказов')
         keyboard.row('🔄 Статус текущего заказа')
+        bot.register_next_step_handler(message, order)
 
     elif user_type == 'company_rep':
         keyboard.row('📊 Статус заказов', '💰 Баланс и предоплата')
@@ -258,7 +273,14 @@ def create_keyboard(message):
     elif user_type == 'owner':
         keyboard.row('🔄 Управление пользователями', '📊 Полная статистика')
         keyboard.row('🔐 Назначение администраторов', '⚙️ Дополнительные настройки')
-    bot.send_message(message.chat.id, 'Menu blyad', reply_markup=keyboard)
+    bot.send_message(message.chat.id,'Меню открыто ', reply_markup=keyboard)
+
+def order(message):
+    global cid
+
+
+
+
 
 # Функция для создания инлайн-клавиатуры
 def create_inline_keyboard():
@@ -266,7 +288,7 @@ def create_inline_keyboard():
     btn_previous = types.InlineKeyboardButton('Предыдущий', callback_data='previous_product')
     btn_next = types.InlineKeyboardButton('Следующий', callback_data='next_product')
     btn_add_to_cart = types.InlineKeyboardButton('Добавить в корзину', callback_data='add_to_cart')
-    markup.add(btn_previous, btn_next, btn_add_to_cart)
+    markup.add(btn_previous, btn_add_to_cart, btn_next)
     return markup
 
 def send_error_message(chat_id, error_message):

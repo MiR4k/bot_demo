@@ -1,18 +1,25 @@
+# import bot
 from config import *
 
 
 @bot.message_handler(commands=['start'])
 def start(message):
+    cid = message.from_user.id
     markup = ReplyKeyboardMarkup(resize_keyboard=True)
     btn_yes = KeyboardButton('Да')
     bnt_edit = KeyboardButton('Редактировать')
     markup.row(btn_yes, bnt_edit)
     try:
-        cursor.execute('SELECT full_name FROM Users WHERE tg_id = ?', (message.from_user.id,))
+        cursor.execute('SELECT Full_name FROM Users WHERE tg_id = ?', (cid,))
         existing_user = cursor.fetchone()
+        existing_user = existing_user[0]
         if existing_user:
-            bot.send_message(message.chat.id, f'Добро пожаловать {existing_user[0]}! Вы уже зарегистрированы.', reply_markup=types.ReplyKeyboardRemove())
-            bot.register_next_step_handler(message, create_keyboard(message))
+            bot.send_message(message.chat.id, f'Добро пожаловать {existing_user}! Вы уже зарегистрированы.', reply_markup=types.ReplyKeyboardRemove())
+            markup = ReplyKeyboardMarkup(resize_keyboard=True)
+            btn = KeyboardButton('открыть меню')
+            markup.row(btn)
+            bot.send_message(cid, 'Нажмите чтобы открыть меню', reply_markup=markup)
+            bot.register_next_step_handler(message, create_keyboard)
 
         else:
             full_name = f"{message.from_user.first_name} {message.from_user.last_name}" \
@@ -29,22 +36,30 @@ def start(message):
 @bot.message_handler(commands=['add_to_katalog'])
 def start_adding_product(message):
     try:
-        global product_name, price, description, photo_data
+        global product_name, price, description, photo_data, cid
+        cid = message.chat.id
         product_name = ""
         price = ""
         description = ""
         photo_data = None
+        cursor.execute('SELECT UserType FROM Users WHERE tg_id = ? ', (cid,))
+        user_type = cursor.fetchone()
+        user_type = user_type[0]
 
-        # Создание объекта ReplyKeyboardMarkup для создания кнопок
-        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-        btn_cancel = types.KeyboardButton('Отмена')
-        markup.row(btn_cancel)
+        if user_type == "admin" or user_type == "owner":
 
-        # Отправка сообщения с запросом на ввод названия товара
-        bot.send_message(message.chat.id, 'Введите название нового товара:', reply_markup=markup)
+            # Создание объекта ReplyKeyboardMarkup для создания кнопок
+            markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+            btn_cancel = types.KeyboardButton('Отмена')
+            markup.row(btn_cancel)
 
-        # Регистрация следующего шага обработки текстового сообщения
-        bot.register_next_step_handler(message, get_product_name)
+            # Отправка сообщения с запросом на ввод названия товара
+            bot.send_message(cid, 'Введите название нового товара:', reply_markup=markup)
+
+            # Регистрация следующего шага обработки текстового сообщения
+            bot.register_next_step_handler(message, get_product_name)
+        else:
+            bot.send_message(cid, 'У вас нет прав для добавления товара в каталог.')
     except Exception as e:
         bot.send_message(message.chat.id, f"Ошибка при добавлении товара: {e}")
 
@@ -59,7 +74,7 @@ def start_show_catalog(message):
         current_message_id = None
 
         # Выполнение SQL-запроса для получения списка товаров из каталога
-        cursor.execute('SELECT product_name, price, description, photo_data FROM products')
+        cursor.execute('SELECT ProductName, Price, Description, Photo_data FROM Products')
         catalog_products = cursor.fetchall()
 
         # Проверка наличия товаров в каталоге
