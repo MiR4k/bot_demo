@@ -1,6 +1,15 @@
-# import bot
 from config import *
 
+# Глобальные переменные для хранения информации о товаре
+product_name = ""
+price = ""
+description = ""
+photo_data = None  # Здесь можно сохранить данные о фото, если необходимо
+
+# Глобальные переменные для отслеживания текущего отображаемого товара
+current_product_index = 0
+catalog_products = []  # Список товаров из каталога
+current_message_id = None  # Идентификатор текущего сообщения с товаром
 
 @bot.message_handler(commands=['start'])
 def start(message):
@@ -107,16 +116,30 @@ def handle_inline_buttons(call):
 
         # Обработка нажатия на кнопку "Добавить в корзину"
         elif call.data == 'add_to_cart':
-            # Добавьте здесь логику для добавления товара в корзину
-            bot.send_message(call.message.chat.id, 'Товар добавлен в корзину.')
-
-        # Завершение обработки запроса
-        bot.answer_callback_query(call.id, text="")
-
+            bot.send_message(call.message.chat.id, 'Товар добавлен в корзину')
     except Exception as e:
         bot.send_message(call.message.chat.id, f"Ошибка при обработке инлайн-кнопок: {e}")
 
 
+def send_product_message(chat_id, product):
+    try:
+        global current_message_id
+        product_name, price, description, photo_data = product
+        message_text = f"**Название:** {product_name}\n**Цена:** {price}\n**Описание:** {description}"
+
+        # Создание объекта ReplyKeyboardMarkup для создания кнопок
+        markup = create_inline_keyboard()
+
+        # Если есть текущее сообщение, обновим его, иначе отправим новое
+        if current_message_id:
+            bot.edit_message_media(media=types.InputMediaPhoto(photo_data, caption=message_text, parse_mode='Markdown'),
+                                   chat_id=chat_id, message_id=current_message_id, reply_markup=markup)
+        else:
+            msg = bot.send_photo(chat_id, photo_data, caption=message_text, parse_mode='Markdown', reply_markup=markup)
+            current_message_id = msg.message_id
+
+    except Exception as e:
+        print(chat_id, f"Ошибка при отправке сообщения о товаре: {e}")
 
 
 print('bot started')

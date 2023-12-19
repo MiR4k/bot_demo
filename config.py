@@ -1,20 +1,10 @@
+import sqlite3
+
 import telebot
 from telebot import types
 from telebot.types import ReplyKeyboardMarkup, KeyboardButton
-import sqlite3
-
+# from main import*
 TOKEN = '6668392385:AAEv2_ROZSkJFQjaVp29uEhfFPrG6xN_Bp4'
-cid = ""
-# Глобальные переменные для хранения информации о товаре
-product_name = ""
-price = ""
-description = ""
-photo_data = None  # Здесь можно сохранить данные о фото, если необходимо
-
-# Глобальные переменные для отслеживания текущего отображаемого товара
-current_product_index = 0
-catalog_products = []  # Список товаров из каталога
-current_message_id = None  # Идентификатор текущего сообщения с товаром
 
 
 try:
@@ -212,34 +202,7 @@ def add_product_to_catalog(message):
 
 
 # Функция для отправки сообщения с информацией о товаре
-def send_product_message(chat_id, product):
-    try:
-        global current_message_id
-        product_name, price, description, photo_data = product
-        message_text = f"**Название:** {product_name}\n**Цена:** {price}\n**Описание:** {description}"
 
-        # Создание объекта ReplyKeyboardMarkup для создания кнопок
-        markup = create_inline_keyboard()
-
-        # Если есть текущее сообщение, обновим его, иначе отправим новое
-        if current_message_id:
-            bot.edit_message_media(media=types.InputMediaPhoto(photo_data, caption=message_text, parse_mode='Markdown'),
-                                   chat_id=chat_id, message_id=current_message_id, reply_markup=markup)
-        else:
-            msg = bot.send_photo(chat_id, photo_data, caption=message_text, parse_mode='Markdown', reply_markup=markup)
-            current_message_id = msg.message_id
-
-    except Exception as e:
-        print(chat_id, f"Ошибка при отправке сообщения о товаре: {e}")
-
-# Не нужный код
-# def get_user_type(message):
-#     try:
-#         cursor.execute('SELECT UserType FROM Users WHERE tg_id = ? ', message.from_user.id)
-#         user_type = cursor.fetchone()
-#         return user_type[0]
-#     except Exception as e:
-#         print(message.chat.id, f"Ошибка при отправке сообщения о товаре: {e}")
 
 def create_keyboard(message):
     global user_type
@@ -252,11 +215,9 @@ def create_keyboard(message):
         print(message.chat.id, f"Ошибка при отправке сообщения о товаре: {e}")
     keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
     user_type = user_type[0]
-    if user_type == 'User':
-        # print(user_type)
+    if user_type == 'user':
         keyboard.row('🛒 Заказать', '📋 История заказов')
         keyboard.row('🔄 Статус текущего заказа')
-        bot.register_next_step_handler(message, order)
 
     elif user_type == 'company_rep':
         keyboard.row('📊 Статус заказов', '💰 Баланс и предоплата')
@@ -275,8 +236,6 @@ def create_keyboard(message):
         keyboard.row('🔐 Назначение администраторов', '⚙️ Дополнительные настройки')
     bot.send_message(message.chat.id,'Меню открыто ', reply_markup=keyboard)
 
-def order(message):
-    global cid
 
 
 
