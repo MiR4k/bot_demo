@@ -5,6 +5,31 @@ from telebot import types
 from telebot.types import ReplyKeyboardMarkup, KeyboardButton
 # from main import*
 TOKEN = '6668392385:AAEv2_ROZSkJFQjaVp29uEhfFPrG6xN_Bp4'
+   # Словарь с кнопками для каждого типа пользователя
+buttons_dict = {
+        'user': [
+            ['🛒 Заказать', '📋 История заказов'],
+            ['🔄 Статус текущего заказа']
+        ],
+        'company_rep': [
+            ['📊 Статус заказов', '💰 Баланс и предоплата'],
+            ['📝 Шаблоны заказов', '🔐 Изменить данные профиля']
+        ],
+        'courier': [
+            ['🚚 Информация о заказах', '📞 Контакты заказчиков'],
+            ['💵 Оплата и счет-фактура', '✅ Подтвердить доставку']
+        ],
+        'admin': [
+            ['🕵️‍♂️ Мониторинг курьеров', '📈 Статистика и анализ'],
+            ['🔄 Подтвердить заказы', '🔒 Изменить статус пользователя']
+        ],
+        'owner': [
+            ['🔄 Управление пользователями', '📊 Полная статистика'],
+            ['🔐 Назначение администраторов', '⚙️ Дополнительные настройки']
+        ]
+    }
+
+    
 
 
 try:
@@ -30,6 +55,7 @@ def reg(message):
                            (message.from_user.id, full_name, message.from_user.username))
             conn.commit()
             bot.send_message(message.chat.id, 'Успешно', reply_markup=types.ReplyKeyboardRemove())
+            main_button()
 
         elif message.text == 'Редактировать':
             bot.send_message(message.chat.id, 'Введите ваше имя бля')
@@ -38,16 +64,12 @@ def reg(message):
         print(f"Error during bot initialization: {e}")
 
 def edit_name(message):
-    markup = ReplyKeyboardMarkup(resize_keyboard=True)
-    btn = KeyboardButton('открыть меню')
-    markup.row(btn)
     try:
         cursor.execute('INSERT INTO Users (tg_id, Full_name, Username) VALUES (?, ?, ?)',
                        (message.from_user.id, message.text, message.from_user.username))
         conn.commit()
         bot.send_message(cid, 'Успешно!', reply_markup=types.ReplyKeyboardRemove())
-        bot.send_message(cid, 'Нажмите чтобы открыть меню', reply_markup=markup)
-        bot.register_next_step_handler(message, create_keyboard)
+        main_button()
     except Exception as e:
         print(e)
 
@@ -58,24 +80,26 @@ def get_product_name(message):
     try:
         # Проверка, если пользователь нажал "Отмена"
         if message.text.lower() == 'отмена':
-            bot.send_message(message.chat.id, 'Добавление товара отменено.', reply_markup=types.ReplyKeyboardRemove())
+            add_catalog_cancel(message)
             return
+
 
         # Сохранение введенного названия товара
         product_name = message.text.strip()
 
         # Создание объекта ReplyKeyboardMarkup для создания кнопок
-        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+        keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
         btn_cancel = types.KeyboardButton('Отмена')
-        markup.row(btn_cancel)
+        keyboard.row(btn_cancel)
 
         # Отправка сообщения с запросом на ввод цены товара
-        bot.send_message(message.chat.id, 'Введите цену нового товара:', reply_markup=markup)
+        bot.send_message(message.chat.id, 'Введите цену нового товара:', reply_markup=keyboard)
 
         # Регистрация следующего шага обработки текстового сообщения
         bot.register_next_step_handler(message, get_product_price)
     except Exception as e:
         print(message.chat.id, f"Ошибка при добавлении товара: {e}")
+
 
 
 # Функция для получения цены товара
@@ -84,7 +108,7 @@ def get_product_price(message):
     try:
         # Проверка, если пользователь нажал "Отмена"
         if message.text.lower() == 'отмена':
-            bot.send_message(message.chat.id, 'Добавление товара отменено.', reply_markup=types.ReplyKeyboardRemove())
+            add_catalog_cancel(message)
             return
 
         # Проверка, что введенное значение является числом
@@ -96,12 +120,12 @@ def get_product_price(message):
         price = message.text.strip()
 
         # Создание объекта ReplyKeyboardMarkup для создания кнопок
-        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+        keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
         btn_cancel = types.KeyboardButton('Отмена')
-        markup.row(btn_cancel)
+        keyboard.row(btn_cancel)
 
         # Отправка сообщения с запросом на ввод описания товара
-        bot.send_message(message.chat.id, 'Введите описание нового товара:', reply_markup=markup)
+        bot.send_message(message.chat.id, 'Введите описание нового товара:', reply_markup=keyboard)
 
         # Регистрация следующего шага обработки текстового сообщения
         bot.register_next_step_handler(message, get_product_description)
@@ -114,7 +138,7 @@ def get_product_description(message):
     try:
         # Проверка, если пользователь нажал "Отмена"
         if message.text.lower() == 'отмена':
-            bot.send_message(message.chat.id, 'Добавление товара отменено.', reply_markup=types.ReplyKeyboardRemove())
+            add_catalog_cancel(message)
             return
 
         # Сохранение введенного описания товара
@@ -139,7 +163,7 @@ def ask_for_photo(message):
     try:
         # Проверка, если пользователь нажал "Отмена"
         if message.text and message.text.lower() == 'отмена':
-            bot.send_message(message.chat.id, 'Добавление товара отменено.', reply_markup=types.ReplyKeyboardRemove())
+            add_catalog_cancel(message)
             return
 
         # Проверка ответа на вопрос о фото товара
@@ -163,7 +187,7 @@ def get_product_photo(message):
     try:
         # Проверка, если пользователь нажал "Отмена"
         if message.text and message.text.lower() == 'отмена':
-            bot.send_message(message.chat.id, 'Добавление товара отменено.', reply_markup=types.ReplyKeyboardRemove())
+            add_catalog_cancel(message)
             return
 
         # Проверка, что сообщение содержит фото
@@ -201,73 +225,32 @@ def add_product_to_catalog(message):
         print(f"Ошибка при добавлении товара: {e} В чате {message.chat.id}")
 
 
+def add_catalog_cancel(message):
+    bot.send_message(message.chat.id, 'Добавление товара отменено.', main_button(message))
 
 
-def create_keyboard(message):
-    global user_type
+def main_button(message):
     global cid
     cid = message.chat.id
+    keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
     try:
-        cursor.execute('SELECT UserType FROM Users WHERE tg_id = ? ', (cid,))
-        user_type = cursor.fetchone()
+        user_type = get_user_type(message)
     except Exception as e:
         print(message.chat.id, f"Ошибка при отправке сообщения о товаре: {e}")
-    keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    user_type = user_type[0]
-    # Словарь с кнопками для каждого типа пользователя
-    buttons_dict = {
-        'user': [
-            ['🛒 Заказать', '📋 История заказов'],
-            ['🔄 Статус текущего заказа']
-        ],
-        'company_rep': [
-            ['📊 Статус заказов', '💰 Баланс и предоплата'],
-            ['📝 Шаблоны заказов', '🔐 Изменить данные профиля']
-        ],
-        'courier': [
-            ['🚚 Информация о заказах', '📞 Контакты заказчиков'],
-            ['💵 Оплата и счет-фактура', '✅ Подтвердить доставку']
-        ],
-        'admin': [
-            ['🕵️‍♂️ Мониторинг курьеров', '📈 Статистика и анализ'],
-            ['🔄 Подтвердить заказы', '🔒 Изменить статус пользователя']
-        ],
-        'owner': [
-            ['🔄 Управление пользователями', '📊 Полная статистика'],
-            ['🔐 Назначение администраторов', '⚙️ Дополнительные настройки']
-        ]
-    }
 
-    # Создание кнопок на основе словаря для определенного типа пользователя
-    user_buttons = buttons_dict.get(user_type, [])
-
-    # Пример вывода кнопок
-    for row in user_buttons:
+ # Создание кнопок на основе словаря для определенного типа пользователя
+    button_text = buttons_dict.get(user_type, [])
+    for row in button_text:
         keyboard.row(*row)
-
-    # if user_type == 'user':
-    #     keyboard.row('🛒 Заказать', '📋 История заказов')
-    #     keyboard.row('🔄 Статус текущего заказа')
-
-    # elif user_type == 'company_rep':
-    #     keyboard.row('📊 Статус заказов', '💰 Баланс и предоплата')
-    #     keyboard.row('📝 Шаблоны заказов', '🔐 Изменить данные профиля')
-
-    # elif user_type == 'courier':
-    #     keyboard.row('🚚 Информация о заказах', '📞 Контакты заказчиков')
-    #     keyboard.row('💵 Оплата и счет-фактура', '✅ Подтвердить доставку')
-
-    # elif user_type == 'admin':
-    #     keyboard.row('🕵️‍♂️ Мониторинг курьеров', '📈 Статистика и анализ')
-    #     keyboard.row('🔄 Подтвердить заказы', '🔒 Изменить статус пользователя')
-
-    # elif user_type == 'owner':
-    #     keyboard.row('🔄 Управление пользователями', '📊 Полная статистика')
-    #     keyboard.row('🔐 Назначение администраторов', '⚙️ Дополнительные настройки')
-    bot.send_message(message.chat.id,'Меню открыто ', reply_markup=keyboard)
+    if message.text == "/start":
+        bot.send_message(message.chat.id,'Меню открыто ', reply_markup=keyboard)
+    bot.register_next_step_handler(message, handler_main_button)
 
 
-
+def handler_main_button(message):
+    
+    if message.text == '🛒 Заказать':
+        bot.send_message(message.chat.id, 'ti pidor')
 
 
 
@@ -280,6 +263,15 @@ def create_inline_keyboard():
     markup.add(btn_previous, btn_add_to_cart, btn_next)
     return markup
 
-def send_error_message(chat_id, error_message):
-    print(chat_id, f"Ошибка: {error_message}")
+def get_user_type(message):
+    try:
+        cursor.execute('SELECT UserType FROM Users WHERE tg_id = ? ', (message.chat.id,))
+        user_type = cursor.fetchone()
+        user_type = user_type[0]
+        return user_type
+    except Exception as e:
+        print(f"Ошибка при получении типа пользователя: {e}")
+
+
+
 

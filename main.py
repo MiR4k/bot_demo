@@ -24,11 +24,7 @@ def start(message):
         existing_user = existing_user[0]
         if existing_user:
             bot.send_message(message.chat.id, f'Добро пожаловать {existing_user}! Вы уже зарегистрированы.', reply_markup=types.ReplyKeyboardRemove())
-            markup = ReplyKeyboardMarkup(resize_keyboard=True)
-            btn = KeyboardButton('открыть меню')
-            markup.row(btn)
-            bot.send_message(cid, 'Нажмите чтобы открыть меню', reply_markup=markup)
-            bot.register_next_step_handler(message, create_keyboard)
+            main_button(message)
 
         else:
             full_name = f"{message.from_user.first_name} {message.from_user.last_name}" \
@@ -51,9 +47,7 @@ def start_adding_product(message):
         price = ""
         description = ""
         photo_data = None
-        cursor.execute('SELECT UserType FROM Users WHERE tg_id = ? ', (cid,))
-        user_type = cursor.fetchone()
-        user_type = user_type[0]
+        user_type = get_user_type(message)
 
         if user_type == "admin" or user_type == "owner":
 
