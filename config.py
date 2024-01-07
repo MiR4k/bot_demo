@@ -244,21 +244,17 @@ def main_button(message):
         keyboard.row(*row)
     if message.text == "/start":
         bot.send_message(message.chat.id,'Меню открыто ', reply_markup=keyboard)
-    bot.register_next_step_handler(message, handler_main_button)
+    # bot.register_next_step_handler(message, handler_main_button)
 
 
-def handler_main_button(message):
-    
-    if message.text == '🛒 Заказать':
-        bot.send_message(message.chat.id, 'ti pidor')
 
 
 
 # Функция для создания инлайн-клавиатуры
-def create_inline_keyboard():
+def inline_keyboard():
     markup = types.InlineKeyboardMarkup(row_width=3)
-    btn_previous = types.InlineKeyboardButton('Предыдущий', callback_data='previous_product')
-    btn_next = types.InlineKeyboardButton('Следующий', callback_data='next_product')
+    btn_next = types.InlineKeyboardButton(' ➡️', callback_data='next_product')
+    btn_previous = types.InlineKeyboardButton('⬅️', callback_data='previous_product')
     btn_add_to_cart = types.InlineKeyboardButton('Добавить в корзину', callback_data='add_to_cart')
     markup.add(btn_previous, btn_add_to_cart, btn_next)
     return markup

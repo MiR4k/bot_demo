@@ -1,10 +1,12 @@
 from config import *
 
 # Глобальные переменные для хранения информации о товаре
-product_name = ""
-price = ""
-description = ""
-photo_data = None  # Здесь можно сохранить данные о фото, если необходимо
+# product_name = ""
+prod_name = ""
+# price = ""
+# description = ""
+# photo_data = None  # Здесь можно сохранить данные о фото, если необходимо
+user_cart ={}
 
 # Глобальные переменные для отслеживания текущего отображаемого товара
 current_product_index = 0
@@ -13,13 +15,14 @@ current_message_id = None  # Идентификатор текущего соо�
 
 @bot.message_handler(commands=['start'])
 def start(message):
-    cid = message.from_user.id
+    user_id = message.from_user.id
+    user_cart[user_id] = []
     markup = ReplyKeyboardMarkup(resize_keyboard=True)
     btn_yes = KeyboardButton('Да')
     bnt_edit = KeyboardButton('Редактировать')
     markup.row(btn_yes, bnt_edit)
     try:
-        cursor.execute('SELECT Full_name FROM Users WHERE tg_id = ?', (cid,))
+        cursor.execute('SELECT Full_name FROM Users WHERE tg_id = ?', (user_id,))
         existing_user = cursor.fetchone()
         existing_user = existing_user[0]
         if existing_user:
@@ -67,34 +70,34 @@ def start_adding_product(message):
         bot.send_message(message.chat.id, f"Ошибка при добавлении товара: {e}")
 
 
-
-# Функция для обработки команды /show_catalog
-@bot.message_handler(commands=['show_catalog'])
-def start_show_catalog(message):
+def get_data_from_db():
     try:
-        global current_product_index, catalog_products, current_message_id
-        current_product_index = 0
-        current_message_id = None
-
-        # Выполнение SQL-запроса для получения списка товаров из каталога
-        cursor.execute('SELECT ProductName, Price, Description, Photo_data FROM Products')
-        catalog_products = cursor.fetchall()
-
-        # Проверка наличия товаров в каталоге
-        if not catalog_products:
-            bot.send_message(message.chat.id, 'Каталог пуст.')
-            return
-
-        # Отправка сообщения с информацией о первом товаре
-        send_product_message(message.chat.id, catalog_products[current_product_index])
-
+        data = cursor.execute('SELECT ProductName FROM Products')
+        return data
     except Exception as e:
-        bot.send_message(message.chat.id, f"Ошибка при отображении каталога: {e}")
+        print(f"Error from get data {e}")
 
+
+
+@bot.message_handler(commands=['zakaz2'])
+def handle_start(message):
+    
+    # Получаем данные из базы данных
+    data_from_db = get_data_from_db()
+    
+    keyboard = telebot.types.InlineKeyboardMarkup(row_width=2)
+
+    buttons = [telebot.types.InlineKeyboardButton(str(text), callback_data=str(text)) for row in data_from_db for text in row]
+    keyboard.add(*buttons)
+
+    keyboard.add(telebot.types.InlineKeyboardButton('На Зад', callback_data='Cancle'))
+                 
+    bot.send_message(message.chat.id, f"Выберите товар", reply_markup=keyboard)
 
 # Обработчик для инлайн-кнопок
 @bot.callback_query_handler(func=lambda call: True)
 def handle_inline_buttons(call):
+    user_id = call.message.chat.id
     try:
         global current_product_index, catalog_products
 
@@ -110,24 +113,51 @@ def handle_inline_buttons(call):
 
         # Обработка нажатия на кнопку "Добавить в корзину"
         elif call.data == 'add_to_cart':
-            bot.send_message(call.message.chat.id, 'Товар добавлен в корзину')
+            add_to_cart(prod_name, user_id)
+            bot.answer_callback_query(call.message.chat.id, f'Товар добавлен в корзину {prod_name}')
+        
+        elif call.data == 'Cancle':
+                # Обработка нажатия на кнопку 'На Зад'
+                bot.answer_callback_query(call.message.chat.id, "Вы нажали 'На Зад'")
+        elif call.data:
+            start_order(call.message, call.data)
+
     except Exception as e:
         bot.send_message(call.message.chat.id, f"Ошибка при обработке инлайн-кнопок: {e}")
 
+def start_order(message, name):
+    try:
+        global current_product_index, catalog_products, current_message_id
+        current_product_index = 0
+        current_message_id = None
+
+        # Выполнение SQL-запроса для получения списка товаров из каталога
+        cursor.execute('SELECT ProductName, Price, Description, Photo_data, ProductId FROM Products where ProductName = ?',(name,))
+        catalog_products = cursor.fetchall()
+
+        # Проверка наличия товаров в каталоге
+        if not catalog_products:
+            bot.send_message(message.chat.id, 'Каталог пуст.')
+            return
+        send_product_message(message.chat.id, catalog_products[current_product_index])
+        # Отправка сообщения с информацией о первом товаре
+        
+    except Exception as e:
+        bot.send_message(message.chat.id, f"Ошибка при отображении каталога: {e}")
 
 def send_product_message(chat_id, product):
     try:
         global current_message_id
-        product_name, price, description, photo_data = product
-        message_text = f"**Название:** {product_name}\n**Цена:** {price}\n**Описание:** {description}"
-
+        product_name, price, description, photo_data, produc_id = product
+        message_text = f"**Название:** {product_name}\n**Цена:** {price}\n**Описание:** {description}\nid: {produc_id}"
         # Создание объекта ReplyKeyboardMarkup для создания кнопок
-        markup = create_inline_keyboard()
+        markup = inline_keyboard()
 
         # Если есть текущее сообщение, обновим его, иначе отправим новое
         if current_message_id:
             bot.edit_message_media(media=types.InputMediaPhoto(photo_data, caption=message_text, parse_mode='Markdown'),
                                    chat_id=chat_id, message_id=current_message_id, reply_markup=markup)
+            
         else:
             msg = bot.send_photo(chat_id, photo_data, caption=message_text, parse_mode='Markdown', reply_markup=markup)
             current_message_id = msg.message_id
@@ -135,6 +165,14 @@ def send_product_message(chat_id, product):
     except Exception as e:
         print(chat_id, f"Ошибка при отправке сообщения о товаре: {e}")
 
+
+def add_to_cart(prod_name, user_id):
+    try:
+        user_cart[user_id].append(prod_name)
+        print(type(user_cart))
+        print(user_cart)
+    except Exception as e:
+        print(e)
 
 print('bot started')
 bot.polling(none_stop=True)

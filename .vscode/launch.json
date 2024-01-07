@@ -5,12 +5,13 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "main",
+            "name": "Python: текущий файл",
             "type": "python",
             "request": "launch",
-            "program": "/home/qosim/Загрузки/1/bot_demo/main.py",
+            "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": true
-        }
+        },
+        
     ]
 }
